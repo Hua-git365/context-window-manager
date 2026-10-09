@@ -1,34 +1,38 @@
-.ctxwm-settings label {
-    display: block;
-    margin-top: 8px;
-}
+/*
+ * 版式几乎全部复用 SillyTavern 原生类（h4 / checkbox_label / neo-range-slider /
+ * neo-range-input / menu_button / small），这里只补三块原生没有的东西：
+ *   1. 内核补丁状态提示条
+ *   2. 当前窗口读数
+ *   3. 停用态淡化
+ * 颜色一律走主题变量或中性 rgba，保证浅色与深色主题下都可读。
+ */
 
-.ctxwm-settings label.checkbox_label {
+#ctxwm_toggles {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 6px;
 }
 
-.ctxwm-settings .text_pole {
-    width: 100%;
-    margin-top: 4px;
+.ctxwm-hint {
+    display: block;
+    margin-top: 10px;
+    opacity: 0.8;
+    line-height: 1.7;
 }
 
-.ctxwm-settings input[type="range"] {
-    width: 100%;
-    margin-top: 4px;
-}
-
-.ctxwm-settings.ctxwm-disabled .ctxwm-status,
-.ctxwm-settings.ctxwm-disabled .ctxwm-hint {
+.ctxwm-disabled .ctxwm-hint,
+.ctxwm-disabled .ctxwm-status {
     opacity: 0.5;
 }
 
+/* --- 内核补丁状态提示条 --- */
+
 .ctxwm-core-patch {
     display: none;
-    margin-bottom: 10px;
+    margin: 6px 0 10px;
     padding: 8px 10px;
-    border-radius: var(--border-radius-md, 8px);
+    border-radius: 5px;
+    border-left: 3px solid transparent;
     font-size: 12px;
     line-height: 1.7;
 }
@@ -38,13 +42,13 @@
 }
 
 .ctxwm-core-patch.ok {
-    background: color-mix(in srgb, var(--green, #4caf50) 18%, transparent);
-    border-left: 3px solid var(--green, #4caf50);
+    background-color: rgba(88, 182, 0, 0.14);
+    border-left-color: rgb(88, 182, 0);
 }
 
 .ctxwm-core-patch.warn {
-    background: color-mix(in srgb, var(--red, #c62828) 15%, transparent);
-    border-left: 3px solid var(--red, #c62828);
+    background-color: rgba(255, 0, 0, 0.12);
+    border-left-color: var(--warning);
 }
 
 .ctxwm-core-patch code {
@@ -52,18 +56,24 @@
     margin-top: 4px;
     padding: 2px 5px;
     border-radius: 4px;
-    background: var(--black30a, rgba(0, 0, 0, 0.12));
+    background-color: var(--black30a);
     font-size: 11px;
     word-break: break-all;
 }
 
+/* --- 当前窗口读数 --- */
+
 .ctxwm-status {
-    margin-top: 12px;
-    padding: 8px 10px;
-    border-radius: var(--border-radius-md, 8px);
-    background: var(--black30a, rgba(0, 0, 0, 0.08));
+    margin-top: 10px;
+    border-left: 3px solid var(--SmartThemeBorderColor);
+    padding-left: 10px;
     font-size: 12px;
     line-height: 1.8;
+    opacity: 0.9;
+}
+
+.ctxwm-status:empty {
+    display: none;
 }
 
 .ctxwm-status div {
@@ -75,22 +85,4 @@
 .ctxwm-status b {
     font-weight: 500;
     opacity: 0.75;
-}
-
-.ctxwm-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: 10px;
-}
-
-.ctxwm-actions .menu_button {
-    flex: 1;
-    text-align: center;
-}
-
-.ctxwm-hint {
-    display: block;
-    margin-top: 10px;
-    opacity: 0.7;
-    line-height: 1.7;
 }

@@ -85,6 +85,8 @@ node data/default-user/extensions/context-window-manager/core-patch/apply-core-p
 
 ## 参数说明
 
+面板在**用户设置**里，不在扩展页 —— 打开左侧栏的设置面板，在第三列（和 "Chat/Message Handling"、"STscript Settings" 同一列）就能看到 **"Context Window / 上下文窗口"**，用的是与原生设置完全一致的版式（段标题 + 开关 + 滑块/数字框成对 + 问号提示）。
+
 | 参数 | 默认 | 含义 |
 |---|---|---|
 | **启用接管** | 开 | 关掉即删除全局策略对象，核心回退到内置行为 |
@@ -128,7 +130,19 @@ node data/default-user/extensions/context-window-manager/core-patch/apply-core-p
 - SillyTavern 1.12+（依赖 `globalThis.SillyTavern.getContext()` 与 `renderExtensionTemplateAsync`）
 - 扩展本体不修改任何核心文件；内核那一处改动用 `core-patch/` 里的脚本单独应用、可一键回滚
 - 与其它扩展无已知冲突
-- 设置面板挂载在 `#extensions_settings2`
+- 面板挂载在**用户设置页**第三列，按 `#power-user-option-checkboxes` → `#power-user-options-block` → `#user-settings-block-content` 逐级回退；三级都找不到才退回扩展页（`#extensions_settings2`），不会因为上游改结构就整个消失
+
+## 多语言
+
+界面文案全部走 `data-i18n`，中文词条在 [`locales/zh-cn.json`](locales/zh-cn.json)，由核心自带的扩展语言机制自动载入：
+
+```json
+"i18n": { "zh-cn": "locales/zh-cn.json" }
+```
+
+`manifest.json` 里声明这段之后，核心的 `addExtensionLocale()` 会在当前语言有对应文件时 `fetch` 它并注册词条；英文界面不需要文件（英文键本身就是显示文案）。`index.js` 里还补了一次自愈式加载 + 重触发翻译，用来兜住"模块求值早于语言文件返回"的时序竞态。
+
+新增文案时记得**同时改三处**：`settings.html` 的 `data-i18n` 键、元素正文（要与键逐字相同，否则英文界面会漏出中文）、以及 `locales/zh-cn.json`。仓库里的 `.workbuddy/check_ctxwm_i18n.py` 可以机械核对这三者是否对齐。
 
 ---
 
