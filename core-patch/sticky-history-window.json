@@ -1,0 +1,34 @@
+{
+  "id": "sticky-history-window",
+  "title": "Sticky history window（Context Window Manager 的内核依赖）",
+  "targetFile": "public/scripts/openai.js",
+  "upstreamRef": "SillyTavern 1.19.0",
+  "appliedMarker": "STContextWindowPolicy",
+  "note": "本补丁把 populateChatHistory() 里硬编码的三个窗口策略参数外置为 globalThis.STContextWindowPolicy，由扩展写入。不装扩展时行为与上游完全一致。",
+  "patches": [
+    {
+      "id": "import-chat-metadata",
+      "upstreamHeader": "@@ -9,6 +9,7 @@",
+      "old": "    abortStatusCheck,\n    cancelStatusCheck,\n    characters,\n    event_types,\n    eventSource,\n    extension_prompt_roles,",
+      "new": "    abortStatusCheck,\n    cancelStatusCheck,\n    characters,\n    chat_metadata,\n    event_types,\n    eventSource,\n    extension_prompt_roles,"
+    },
+    {
+      "id": "import-save-metadata",
+      "upstreamHeader": "@@ -33,6 +34,7 @@",
+      "old": "    system_message_types,\n    this_chid,\n} from '../script.js';\nimport { getGroupNames, selected_group } from './group-chats.js';\n\nimport {",
+      "new": "    system_message_types,\n    this_chid,\n} from '../script.js';\nimport { saveMetadataDebounced } from './extensions.js';\nimport { getGroupNames, selected_group } from './group-chats.js';\n\nimport {"
+    },
+    {
+      "id": "policy-block-and-window-boundary",
+      "upstreamHeader": "@@ -946,7 +948,54 @@",
+      "old": "\n    // Insert chat messages as long as there is budget available\n    const chatPool = [...messages].reverse();\n    for (let index = 0; index < chatPool.length; index++) {\n        const chatPrompt = chatPool[index];\n\n        // We do not want to mutate the prompt",
+      "new": "\n    // Insert chat messages as long as there is budget available\n    const chatPool = [...messages].reverse();\n\n    // History window policy. Historically these three knobs were hardcoded here; they are now\n    // read from `globalThis.STContextWindowPolicy`, which the \"Context Window Manager\"\n    // extension installs. Without that extension the object is undefined and every value below\n    // falls back to the original constant, so behaviour is unchanged.\n    const windowPolicy = globalThis.STContextWindowPolicy ?? {};\n    const stickyEnabled = windowPolicy.sticky !== false;\n    // `Infinity` is a valid override meaning \"no cap\", so a plain Number.isFinite() check would\n    // silently reject it and fall back to 16000.\n    const historyTokenCap = typeof windowPolicy.historyTokenCap === 'number' && !Number.isNaN(windowPolicy.historyTokenCap)\n        ? windowPolicy.historyTokenCap\n        : 16000;\n    const overflowKeepRatio = Number.isFinite(windowPolicy.overflowKeepRatio)\n        ? Math.min(Math.max(windowPolicy.overflowKeepRatio, 0), 1)\n        : 0.5;\n\n    // Sticky history window. The default policy keeps \"the newest messages that fit\", which\n    // slides forward by one message on every turn and therefore invalidates the provider's\n    // prefix cache past the system prompts. Instead, remember where the oldest included\n    // message sits and keep it there: the window then grows append-only (stable prefix, cache\n    // keeps hitting) until it no longer fits, at which point `overflowKeepRatio` of the window\n    // is kept and the rest is dropped in a single step. The boundary lives in chat_metadata so\n    // it survives reloads and is per chat. Turning sticky off restores the sliding window.\n    let stickyFront = stickyEnabled ? Number(chat_metadata?.historyStickyFront) : 0;\n    if (!Number.isInteger(stickyFront) || stickyFront < 0 || stickyFront >= messages.length) {\n        stickyFront = 0;\n    }\n\n    /** Index in `messages` of the oldest entry that was actually inserted. */\n    let oldestInserted = messages.length;\n    let overflowed = false;\n\n    /**\n     * Upper bound for the chat-history part of the prompt, expressed in the local tokenizer's\n     * units. Deliberately a constant rather than a fraction of the user-editable max context:\n     * that setting can be raised to its 2M ceiling from the UI at any time, which would make\n     * the history never overflow and silently disable the compaction below. Roughly 9000\n     * tokens as counted by the model itself.\n     */\n    let historyTokens = 0;\n\n    for (let index = 0; index < chatPool.length; index++) {\n        if (index >= chatPool.length - stickyFront) {\n            // Reached the remembered window boundary without running out of budget: keep the\n            // window exactly where it is so the prompt stays a byte-stable prefix.\n            break;\n        }\n\n        const chatPrompt = chatPool[index];\n\n        // We do not want to mutate the prompt"
+    },
+    {
+      "id": "overflow-reanchor",
+      "upstreamHeader": "@@ -1067,11 +1116,30 @@",
+      "old": "            chatMessage.signature = chatPrompt.signature;\n        }\n\n        if (chatCompletion.canAfford(chatMessage)) {\n            chatCompletion.insertAtStart(chatMessage, 'chatHistory');\n        } else {\n            break;\n        }\n    }\n\n    // Insert and free new chat",
+      "new": "            chatMessage.signature = chatPrompt.signature;\n        }\n\n        const messageTokens = chatMessage.getTokens();\n\n        if (historyTokens + messageTokens > historyTokenCap || !chatCompletion.canAfford(chatMessage)) {\n            overflowed = true;\n            break;\n        }\n\n        chatCompletion.insertAtStart(chatMessage, 'chatHistory');\n        historyTokens += messageTokens;\n        oldestInserted = messages.length - 1 - index;\n    }\n\n    // Re-anchoring only exists in sticky mode. With sticky off the window simply slides forward\n    // and writing a boundary here would be meaningless (and would surprise the built-in mode if\n    // the extension is later disabled).\n    if (overflowed && stickyEnabled) {\n        // The window no longer fits inside the budget: drop the configured share of the oldest\n        // part and re-anchor the boundary, so the following turns are append-only again.\n        const newFront = oldestInserted + Math.floor((messages.length - oldestInserted) * (1 - overflowKeepRatio));\n        if (newFront > stickyFront && newFront < messages.length) {\n            chat_metadata.historyStickyFront = newFront;\n            saveMetadataDebounced();\n            console.debug(`[openai] Chat history window is full; dropping the oldest ${Math.round((1 - overflowKeepRatio) * 100)}%: front ${stickyFront} -> ${newFront} of ${messages.length} (keeping ${messages.length - newFront} messages).`);\n        }\n    }\n\n    // Insert and free new chat"
+    }
+  ]
+}

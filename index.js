@@ -92,6 +92,63 @@ function updateControlState() {
     $('#ctxwm_settings').toggleClass('ctxwm-disabled', off);
 }
 
+/** 内核补丁状态：null = 尚未检测，true = 已安装，false = 未安装。 */
+let corePatchState = null;
+
+/**
+ * 检测内核是否已打补丁。
+ *
+ * 补丁的标记是 openai.js 里出现 STContextWindowPolicy —— 只有改过的内核才会去读这个对象。
+ * 没打补丁时本扩展的界面照常显示、参数照常保存，但**设置不会起作用**，
+ * 所以必须把这件事明确摆到面板上，否则用户只会觉得"扩展没用"。
+ *
+ * @returns {Promise<boolean|null>} true 已装 / false 未装 / null 无法确认
+ */
+async function detectCorePatch() {
+    if (corePatchState !== null) {
+        return corePatchState;
+    }
+    try {
+        const response = await fetch('/scripts/openai.js');
+        if (!response.ok) {
+            return null;
+        }
+        corePatchState = (await response.text()).includes('STContextWindowPolicy');
+    } catch (error) {
+        console.debug('[ContextWindow] 内核补丁检测失败', error);
+        return null;
+    }
+    return corePatchState;
+}
+
+function renderCorePatchNotice(state) {
+    const box = $('#ctxwm_core_patch');
+    if (!box.length) {
+        return;
+    }
+
+    if (state === true) {
+        box.attr('class', 'ctxwm-core-patch ok show')
+            .text('内核补丁已安装，下面的设置会立即生效。');
+        return;
+    }
+
+    if (state === false) {
+        box.attr('class', 'ctxwm-core-patch warn show').html(
+            '<b>内核补丁未安装，下面的设置不会生效。</b><br>' +
+            '本扩展依赖 openai.js 里的一处改动（把历史窗口策略外置给扩展），它无法随扩展自动安装。' +
+            '在 SillyTavern 根目录执行一次即可（脚本会自动定位目录，先备份再改）：<br>' +
+            '<code>node data/default-user/extensions/context-window-manager/core-patch/apply-core-patch.mjs</code><br>' +
+            '用户目录不是 default-user 的话，把路径里的目录名换成实际的。' +
+            '撤销用 <code>--revert</code>，详见 core-patch/README.md。',
+        );
+        return;
+    }
+
+    box.attr('class', 'ctxwm-core-patch warn show')
+        .text('无法确认内核补丁状态（读取 openai.js 失败），浏览器控制台里有原因。');
+}
+
 async function refreshStatus() {
     const { chat, chatMetadata, getTokenCountAsync } = ctx();
     const settings = getSettings();
@@ -202,6 +259,7 @@ async function mountSettings() {
         mounted = true;
         bindUi();
         updateControlState();
+        renderCorePatchNotice(await detectCorePatch());
         await refreshStatus();
     } catch (error) {
         console.error('[ContextWindow] 设置面板挂载失败', error);

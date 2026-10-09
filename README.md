@@ -25,6 +25,8 @@ public/scripts/openai.js → populateChatHistory()
 
 未安装本扩展时，内核会 `?? {}` 回退到内置常量，行为与改动前完全一致 —— 所以装/卸本扩展本身是安全的，不会弄坏任何东西。
 
+**好消息是这块补丁不用手抄**：本仓库的 [`core-patch/`](core-patch/) 里带了由真实 diff 导出的补丁数据和一键安装脚本，见下面的[安装](#安装)第 2 步。
+
 ### 内核需要实现的最小契约
 
 内核侧需要读取这三个字段（缺省值即原硬编码常量）：
@@ -46,6 +48,10 @@ const overflowKeepRatio  = Number.isFinite(policy.overflowKeepRatio)
 
 ## 安装
 
+装好之后要**做两件事**：装扩展本体，再给内核打一次补丁。只做第一件的话，扩展会正常显示、参数也会保存，但**设置不会生效** —— 面板顶部会给出红色提示。
+
+### 第 1 步：装扩展
+
 在 SillyTavern 中打开 **Extensions（扩展）** 面板 → 点击 **Install Extension（安装扩展）** → 粘贴**下面任一地址** → 安装后**刷新页面**：
 
 | 源 | 地址 |
@@ -56,6 +62,24 @@ const overflowKeepRatio  = Number.isFinite(policy.overflowKeepRatio)
 两个地址是同一份代码的镜像，装哪个都一样；带不带 `.git` 后缀都能识别。
 
 > **仓库名必须保持 `context-window-manager`。** 扩展代码里硬编码了设置面板的路径 `third-party/context-window-manager`，SillyTavern 又是按仓库名建文件夹的，改名会导致设置面板加载失败。
+
+### 第 2 步：给内核打补丁
+
+在 SillyTavern **根目录**执行（脚本会自己向上定位根目录，所以从哪个目录跑都行）：
+
+```
+node data/default-user/extensions/context-window-manager/core-patch/apply-core-patch.mjs
+```
+
+用户目录不是 `default-user` 的话，把路径里的目录名换成实际的那个。
+
+- 自动备份为 `openai.js.bak.<时间戳>`；改完做写后复验，任何一步不通过就整体放弃、不动文件；
+- **幂等**，重复执行只会提示「已打过补丁」；
+- 撤销：同样的命令末尾加 `--revert`；先看会发生什么：加 `--dry-run`；只看状态不改文件：加 `--check`。
+
+> 不想跑脚本也可以：`core-patch/sticky-history-window.patch` 是标准 unified diff，可以 `git apply`；内容只有 4 处（2 个 import + 2 段逻辑），手工对照粘贴也行。细节见 [core-patch/README.md](core-patch/README.md)。
+
+**如果你用的是一份已经打好补丁的 SillyTavern（比如自己 fork 出来的整包），第 2 步跳过。** 判断是否已打：打开扩展面板，顶部显示绿色「内核补丁已安装」就是齐了。
 
 ---
 
@@ -102,7 +126,8 @@ const overflowKeepRatio  = Number.isFinite(policy.overflowKeepRatio)
 ## 兼容性
 
 - SillyTavern 1.12+（依赖 `globalThis.SillyTavern.getContext()` 与 `renderExtensionTemplateAsync`）
-- 不修改任何核心文件，与其它扩展无已知冲突
+- 扩展本体不修改任何核心文件；内核那一处改动用 `core-patch/` 里的脚本单独应用、可一键回滚
+- 与其它扩展无已知冲突
 - 设置面板挂载在 `#extensions_settings2`
 
 ---
