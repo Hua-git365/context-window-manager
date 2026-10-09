@@ -1,0 +1,42 @@
+<div id="ctxwm_settings" class="ctxwm-settings">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b>Context Window Manager · 上下文窗口管理</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content">
+
+            <label class="checkbox_label" for="ctxwm_enabled">
+                <input type="checkbox" id="ctxwm_enabled">
+                <span>启用接管（关闭后回退到内置 sticky 行为）</span>
+            </label>
+
+            <label for="ctxwm_history_cap">历史窗口上限（tokens，填 0 表示不限制）</label>
+            <input type="number" id="ctxwm_history_cap" class="text_pole" min="0" max="500000" step="1000">
+
+            <label for="ctxwm_keep">溢出时保留比例：<span id="ctxwm_keep_value">50%</span></label>
+            <input type="range" id="ctxwm_keep" min="10" max="100" step="5">
+
+            <label class="checkbox_label" for="ctxwm_sticky">
+                <input type="checkbox" id="ctxwm_sticky">
+                <span>保持前缀稳定（只增不减，缓存友好）</span>
+            </label>
+
+            <div class="ctxwm-status" id="ctxwm_status"></div>
+
+            <div class="ctxwm-actions">
+                <div class="menu_button" id="ctxwm_refresh">刷新状态</div>
+                <div class="menu_button" id="ctxwm_reset">重置窗口起点</div>
+            </div>
+
+            <small class="ctxwm-hint">
+                <b>保留比例</b>：溢出时留下多少旧窗口。比例越低，骤降越狠，但两次骤降之间的前缀完全不变、缓存持续命中；
+                比例越高，前移步长越小、骤降越温和，代价是前缀变动更频繁、缓存命中率下降。50% = 你现在的行为。<br>
+                <b>注意</b>：调到 100% 时窗口每轮只前移最小步长，效果等同关闭 sticky —— 曲线平滑但缓存基本打不中，
+                两者是同一个取舍的两端，不存在"既平滑又保缓存"的设置。<br>
+                <b>历史上限</b>：只约束聊天历史部分，不含系统提示词与角色卡；填 0 表示不设上限（仍受模型上下文预算约束）。
+            </small>
+
+        </div>
+    </div>
+</div>

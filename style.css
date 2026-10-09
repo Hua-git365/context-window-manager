@@ -1,0 +1,63 @@
+.ctxwm-settings label {
+    display: block;
+    margin-top: 8px;
+}
+
+.ctxwm-settings label.checkbox_label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ctxwm-settings .text_pole {
+    width: 100%;
+    margin-top: 4px;
+}
+
+.ctxwm-settings input[type="range"] {
+    width: 100%;
+    margin-top: 4px;
+}
+
+.ctxwm-settings.ctxwm-disabled .ctxwm-status,
+.ctxwm-settings.ctxwm-disabled .ctxwm-hint {
+    opacity: 0.5;
+}
+
+.ctxwm-status {
+    margin-top: 12px;
+    padding: 8px 10px;
+    border-radius: var(--border-radius-md, 8px);
+    background: var(--black30a, rgba(0, 0, 0, 0.08));
+    font-size: 12px;
+    line-height: 1.8;
+}
+
+.ctxwm-status div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.ctxwm-status b {
+    font-weight: 500;
+    opacity: 0.75;
+}
+
+.ctxwm-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.ctxwm-actions .menu_button {
+    flex: 1;
+    text-align: center;
+}
+
+.ctxwm-hint {
+    display: block;
+    margin-top: 10px;
+    opacity: 0.7;
+    line-height: 1.7;
+}
