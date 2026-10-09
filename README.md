@@ -51,7 +51,7 @@ const overflowKeepRatio  = Number.isFinite(policy.overflowKeepRatio)
 | 源 | 地址 |
 |---|---|
 | GitHub（主仓库） | `https://github.com/Hua-git365/context-window-manager` |
-| Gitee（镜像，国内更快） | `https://gitee.com/luleihua/context-window-manager` |
+| Gitee（镜像，国内更快） | `https://gitee.com/lu-leihua/context-window-manager` |
 
 两个地址是同一份代码的镜像，装哪个都一样；带不带 `.git` 后缀都能识别。
 
